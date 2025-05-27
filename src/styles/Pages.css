@@ -1,0 +1,65 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.login-page,
+.create-assignment-page,
+.submissions-page,
+.user-management-page,
+.submit-assignment-page,
+.assignment-page,
+.profile-page {
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #1e293b; /* Dark Blue background */
+}
+
+form {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  background-color: #ffffff; /* White content area */
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: #1e293b; /* Dark Blue text */
+}
+
+input,
+textarea,
+select,
+button {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #4b5563; /* Slightly lighter Dark Blue for borders */
+  border-radius: 4px;
+  box-sizing: border-box;
+  width: 100%;
+  color: #1e293b; /* Dark Blue text */
+  background-color: #ffffff; /* White background for inputs */
+}
+
+button {
+  background-color: #3b82f6; /* Accent Blue for buttons */
+  color: #ffffff; /* White text */
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #60a5fa; /* Lighter Accent Blue for hover */
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  form {
+    width: 90%;
+  }
+}
