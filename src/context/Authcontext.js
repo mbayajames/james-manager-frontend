@@ -4,98 +4,231 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [assignments, setAssignments] = useState([
-    { id: 1, title: "Math Homework", description: "Solve problems", dueDate: "2025-05-30", published: true, createdBy: 1, assignedTo: 2 },
-    { id: 2, title: "Science Project", description: "Build a model", dueDate: "2025-06-01", published: true, createdBy: 1, assignedTo: 3 },
-  ]);
-  const [submissions, setSubmissions] = useState([
-    { id: 1, assignmentId: 1, studentId: 2, content: "Math answers", status: "Submitted", marks: null, result: null, feedback: "" },
-  ]);
-  const [users, setUsers] = useState([
-    { id: 1, username: "admin", password: "admin123", role: "admin", profile: { email: "admin@edutask.com" } },
-    { id: 2, username: "student1", password: "pass123", role: "student", profile: { email: "student1@edutask.com" } },
-    { id: 3, username: "student2", password: "pass123", role: "student", profile: { email: "student2@edutask.com" } },
-  ]);
+  const [assignments, setAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [users, setUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  const login = (username, password) => {
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
-      setCurrentUser(user);
-      return true;
+  const login = async (username, password) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setCurrentUser(data.user);
+        localStorage.setItem('token', data.token);
+        fetchAssignments();
+        fetchSubmissions();
+        fetchNotifications();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setCurrentUser(null);
+    localStorage.removeItem('token');
+    setAssignments([]);
+    setSubmissions([]);
+    setNotifications([]);
   };
 
-  const createAssignment = (assignment) => {
-    const newAssignment = { id: assignments.length + 1, ...assignment, createdBy: currentUser.id };
-    setAssignments([...assignments, newAssignment]);
-    if (!newAssignment.published) {
-      setNotifications([...notifications, { id: notifications.length + 1, message: `New draft assignment: ${newAssignment.title}`, read: false }]);
+  const fetchAssignments = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/assignment', {
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+      });
+      const data = await response.json();
+      setAssignments(data);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
     }
   };
 
-  const editAssignment = (id, updatedAssignment) => {
-    setAssignments(assignments.map(a => a.id === id ? { ...a, ...updatedAssignment } : a));
-    setNotifications([...notifications, { id: notifications.length + 1, message: `Assignment ${id} updated`, read: false }]);
+  const fetchSubmissions = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/submission', {
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+      });
+      const data = await response.json();
+      setSubmissions(data);
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+    }
   };
 
-  const deleteAssignment = (id) => {
-    setAssignments(assignments.filter(a => a.id !== id));
-    setSubmissions(submissions.filter(s => s.assignmentId !== id));
-    setNotifications([...notifications, { id: notifications.length + 1, message: `Assignment ${id} deleted`, read: false }]);
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/user/notifications', {
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+      });
+      const data = await response.json();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
   };
 
-  const publishAssignment = (id) => {
-    const assignment = assignments.find(a => a.id === id);
-    setAssignments(assignments.map(a => a.id === id ? { ...a, published: true } : a));
-    setNotifications([...notifications, { id: notifications.length + 1, message: `Assignment published: ${assignment.title}`, read: false }]);
+  const createAssignment = async (assignment) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/assignment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token'),
+        },
+        body: JSON.stringify(assignment),
+      });
+      const newAssignment = await response.json();
+      setAssignments([...assignments, newAssignment]);
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+    }
   };
 
-  const submitAssignment = (submission) => {
-    const newSubmission = { id: submissions.length + 1, ...submission, studentId: currentUser.id, status: "Submitted" };
-    setSubmissions([...submissions, newSubmission]);
-    setNotifications([...notifications, { id: notifications.length + 1, message: `New submission for Assignment ${newSubmission.assignmentId}`, read: false }]);
+  const editAssignment = async (id, updatedAssignment) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/assignment/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token'),
+        },
+        body: JSON.stringify(updatedAssignment),
+      });
+      const updated = await response.json();
+      setAssignments(assignments.map(a => (a._id === id ? updated : a)));
+    } catch (error) {
+      console.error('Error updating assignment:', error);
+    }
   };
 
-  const markSubmission = (submissionId, marks, result, feedback) => {
-    const submission = submissions.find(s => s.id === submissionId);
-    setSubmissions(submissions.map(s => s.id === submissionId ? { ...s, marks, result, status: "Graded", feedback } : s));
-    setNotifications([...notifications, { id: notifications.length + 1, message: `Submission ${submissionId} graded: ${result}`, read: false }]);
+  const deleteAssignment = async (id) => {
+    try {
+      await fetch(`http://localhost:5000/api/assignment/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+      });
+      setAssignments(assignments.filter(a => a._id !== id));
+      setSubmissions(submissions.filter(s => s.assignmentId !== id));
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+    }
   };
 
-  const assignStudentToAssignment = (assignmentId, studentId) => {
-    setAssignments(assignments.map(a => a.id === assignmentId ? { ...a, assignedTo: studentId } : a));
-    setNotifications([...notifications, { id: notifications.length + 1, message: `Student assigned to Assignment ${assignmentId}`, read: false }]);
+  const publishAssignment = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/assignment/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token'),
+        },
+        body: JSON.stringify({ published: true }),
+      });
+      const updated = await response.json();
+      setAssignments(assignments.map(a => (a._id === id ? updated : a)));
+    } catch (error) {
+      console.error('Error publishing assignment:', error);
+    }
   };
 
-  const addUser = (user) => {
-    const newUser = { id: users.length + 1, ...user, profile: { email: `${user.username}@edutask.com` } };
-    setUsers([...users, newUser]);
+  const submitAssignment = async (submission) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/submission', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token'),
+        },
+        body: JSON.stringify(submission),
+      });
+      const newSubmission = await response.json();
+      setSubmissions([...submissions, newSubmission]);
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+    }
   };
 
-  const markNotificationAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+  const markSubmission = async (submissionId, marks, result, feedback) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/submission/${submissionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token'),
+        },
+        body: JSON.stringify({ marks, result, feedback }),
+      });
+      const updated = await response.json();
+      setSubmissions(submissions.map(s => (s._id === submissionId ? updated : s)));
+    } catch (error) {
+      console.error('Error marking submission:', error);
+    }
+  };
+
+  const assignStudentToAssignment = async (assignmentId, studentId) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/user/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': localStorage.getItem('token'),
+        },
+        body: JSON.stringify({ assignmentId, studentId }),
+      });
+      const updatedAssignment = await response.json();
+      setAssignments(assignments.map(a => (a._id === assignmentId ? updatedAssignment : a)));
+    } catch (error) {
+      console.error('Error assigning student:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/user/notifications/${id}`, {
+        method: 'PUT',
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+      });
+      const updated = await response.json();
+      setNotifications(notifications.map(n => (n._id === id ? updated : n)));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const today = new Date().toISOString().split('T')[0];
-      assignments.forEach(assignment => {
-        if (assignment.dueDate === today && assignment.published) {
-          setNotifications(prev => [...prev, { id: prev.length + 1, message: `Reminder: ${assignment.title} is due today!`, read: false }]);
-        }
-      });
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [assignments]);
+    if (currentUser) {
+      fetchAssignments();
+      fetchSubmissions();
+      fetchNotifications();
+    }
+  }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, assignments, createAssignment, editAssignment, deleteAssignment, publishAssignment, submissions, submitAssignment, markSubmission, users, addUser, assignStudentToAssignment, notifications, markNotificationAsRead }}>
+    <AuthContext.Provider value={{
+      currentUser,
+      login,
+      logout,
+      assignments,
+      createAssignment,
+      editAssignment,
+      deleteAssignment,
+      publishAssignment,
+      submissions,
+      submitAssignment,
+      markSubmission,
+      assignStudentToAssignment,
+      notifications,
+      markNotificationAsRead,
+    }}>
       {children}
     </AuthContext.Provider>
   );
